@@ -1,0 +1,53 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SF 量表在线评分工具</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📊 SF 量表在线评分工具</h1>
+            <p class="subtitle">专业 · 精准 · 无需安装 · 即传即算</p>
+        </header>
+
+        <div class="card-grid">
+            <!-- SF-12 -->
+            <div class="card">
+                <div class="card-badge">12 题</div>
+                <h2>SF-12 健康调查</h2>
+                <p class="card-desc">生命质量健康调查简表（12条目版）</p>
+                <ul class="card-features">
+                    <li>计算 <strong>PCS12</strong>（生理健康总分）</li>
+                    <li>计算 <strong>MCS12</strong>（心理健康总分）</li>
+                    <li>支持 Excel / CSV 上传</li>
+                    <li>自动列序验证</li>
+                </ul>
+                <a href="/tool/sf12" class="btn btn-primary">开始使用 →</a>
+                <a href="/api/generate_template/sf12" class="btn btn-outline">下载模板</a>
+            </div>
+
+            <!-- SF-36 -->
+            <div class="card">
+                <div class="card-badge">36 题</div>
+                <h2>SF-36 健康调查</h2>
+                <p class="card-desc">生命质量健康调查简表（36条目版）</p>
+                <ul class="card-features">
+                    <li>计算 <strong>8 个维度</strong>得分（PF/RP/BP/GH/VT/SF/RE/MH）</li>
+                    <li>计算 <strong>PCS</strong> + <strong>MCS</strong> 总分</li>
+                    <li>自动缺失值处理</li>
+                    <li>反向计分自动完成</li>
+                </ul>
+                <a href="/tool/sf36" class="btn btn-primary">开始使用 →</a>
+                <a href="/api/generate_template/sf36" class="btn btn-outline">下载模板</a>
+            </div>
+        </div>
+
+        <footer>
+            <p>数据不上传服务器 · 计算完成后即销毁 · 安全可靠</p>
+        </footer>
+    </div>
+</body>
+</html>

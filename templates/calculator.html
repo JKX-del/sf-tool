@@ -1,0 +1,314 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }} 在线评分</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <a href="/" class="back-link">← 返回首页</a>
+            <h1>📊 {{ title }} 在线评分工具</h1>
+        </header>
+
+        <!-- 步骤指示器 -->
+        <div class="steps">
+            <div class="step active" id="step1-indicator">
+                <span class="step-num">1</span>
+                <span>上传数据</span>
+            </div>
+            <div class="step-arrow">→</div>
+            <div class="step" id="step2-indicator">
+                <span class="step-num">2</span>
+                <span>核对列序</span>
+            </div>
+            <div class="step-arrow">→</div>
+            <div class="step" id="step3-indicator">
+                <span class="step-num">3</span>
+                <span>激活计算</span>
+            </div>
+            <div class="step-arrow">→</div>
+            <div class="step" id="step4-indicator">
+                <span class="step-num">4</span>
+                <span>下载结果</span>
+            </div>
+        </div>
+
+        <!-- 区域 1：上传 -->
+        <section id="section-upload" class="section active">
+            <div class="card">
+                <h2>📤 上传您的数据文件</h2>
+                <p class="hint">支持 Excel (.xlsx/.xls) 和 CSV 格式。数据按题目顺序排列，第1列为第1题，第2列为第2题……不需要特定的列名。</p>
+
+                <div class="upload-area" id="drop-zone">
+                    <input type="file" id="file-input" accept=".xlsx,.xls,.csv" hidden>
+                    <div class="upload-icon">📁</div>
+                    <p class="upload-text">点击选择文件 或 拖拽到此处</p>
+                    <p class="upload-hint" id="file-name-display"></p>
+                </div>
+
+                <div class="action-row">
+                    <a href="/api/generate_template/{{ scale_type }}" class="btn btn-outline">📥 下载空白模板</a>
+                </div>
+
+                <button class="btn btn-primary" id="btn-preview" disabled>预览数据 →</button>
+                <div id="upload-error" class="error-message"></div>
+            </div>
+        </section>
+
+        <!-- 区域 2：列序验证 -->
+        <section id="section-verify" class="section">
+            <div class="card">
+                <h2>🔍 核对数据列序</h2>
+                <p class="hint">系统按 <strong>列的位置</strong>（第1列=Q1，第2列=Q2…）读取数据，与列名无关。<br>
+                请核对以下映射表，确认您的数据列序与题目顺序一致。</p>
+
+                <div id="mapping-container" class="mapping-table-wrapper">
+                    <!-- JS 动态填充 -->
+                </div>
+
+                <div class="action-row">
+                    <button class="btn btn-outline" id="btn-back-upload">← 返回重新上传</button>
+                    <button class="btn btn-primary" id="btn-confirm-order">确认列序正确，下一步 →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 区域 3：激活码 + 计算 -->
+        <section id="section-calculate" class="section">
+            <div class="card">
+                <h2>🔑 输入激活码</h2>
+                <p class="hint">本工具为付费使用（9.9 元），请输入您购买获取的激活码。</p>
+
+                <div class="form-row">
+                    <input type="text" id="code-input" placeholder="请输入激活码" class="input-code">
+                    <button class="btn btn-primary" id="btn-calculate">开始计算</button>
+                </div>
+
+                <div id="calc-status" class="status-area"></div>
+                <div id="calc-error" class="error-message"></div>
+            </div>
+        </section>
+
+        <!-- 区域 4：结果 -->
+        <section id="section-result" class="section">
+            <div class="card">
+                <h2>✅ 计算完成</h2>
+                <div id="result-info"></div>
+
+                <div class="summary-box" id="summary-container">
+                    <!-- JS 动态填充 -->
+                </div>
+
+                <div class="action-row">
+                    <a id="download-btn" class="btn btn-primary">📥 下载结果 Excel</a>
+                    <button class="btn btn-outline" id="btn-new-calc">重新计算</button>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        // === 全局状态 ===
+        let uploadedFile = null;
+        let currentScaleType = "{{ scale_type }}";
+        let previewData = null;
+        let downloadUrl = null;
+
+        // === 元素引用 ===
+        const dropZone = document.getElementById("drop-zone");
+        const fileInput = document.getElementById("file-input");
+        const fileNameDisplay = document.getElementById("file-name-display");
+        const btnPreview = document.getElementById("btn-preview");
+        const uploadError = document.getElementById("upload-error");
+
+        // === 文件上传 ===
+        dropZone.addEventListener("click", () => fileInput.click());
+        dropZone.addEventListener("dragover", (e) => { e.preventDefault(); dropZone.classList.add("dragover"); });
+        dropZone.addEventListener("dragleave", () => dropZone.classList.remove("dragover"));
+        dropZone.addEventListener("drop", (e) => {
+            e.preventDefault();
+            dropZone.classList.remove("dragover");
+            if (e.dataTransfer.files.length) {
+                fileInput.files = e.dataTransfer.files;
+                handleFileSelect(e.dataTransfer.files[0]);
+            }
+        });
+        fileInput.addEventListener("change", () => {
+            if (fileInput.files.length) handleFileSelect(fileInput.files[0]);
+        });
+
+        function handleFileSelect(file) {
+            uploadedFile = file;
+            fileNameDisplay.textContent = file.name + " (" + (file.size / 1024).toFixed(1) + " KB)";
+            btnPreview.disabled = false;
+            uploadError.textContent = "";
+        }
+
+        // === 预览按钮 ===
+        btnPreview.addEventListener("click", async () => {
+            if (!uploadedFile) return;
+
+            btnPreview.disabled = true;
+            btnPreview.textContent = "正在读取…";
+            uploadError.textContent = "";
+
+            const formData = new FormData();
+            formData.append("file", uploadedFile);
+            formData.append("scale_type", currentScaleType);
+
+            try {
+                const resp = await fetch("/api/preview", { method: "POST", body: formData });
+                const data = await resp.json();
+
+                if (data.error) {
+                    uploadError.textContent = data.error;
+                    btnPreview.disabled = false;
+                    btnPreview.textContent = "预览数据 →";
+                    return;
+                }
+
+                previewData = data;
+                renderMapping(data);
+                switchSection("verify");
+                updateStep(2);
+            } catch (e) {
+                uploadError.textContent = "网络错误，请重试";
+            }
+
+            btnPreview.disabled = false;
+            btnPreview.textContent = "预览数据 →";
+        });
+
+        // === 渲染映射表 ===
+        function renderMapping(data) {
+            let html = '<table class="mapping-table"><thead><tr>';
+            html += '<th>列序</th><th>您的列名</th><th>应为</th><th>所属维度</th><th>题目内容</th><th style="width:120px">前3行数据</th></tr>';
+            html += '</thead><tbody>';
+
+            data.mapping.forEach((item, i) => {
+                let statusClass = "";
+                let statusIcon = "";
+                const expectedId = item.question_id;  // Q1, Q2, ...
+                const actualName = item.col_name;
+                if (actualName.toUpperCase() === expectedId || actualName === expectedId) {
+                    statusClass = "match-ok";
+                    statusIcon = " ✅";
+                } else {
+                    statusClass = "match-warn";
+                    statusIcon = " ⚠️";
+                }
+                html += `<tr>
+                    <td class="col-pos">#${item.position}</td>
+                    <td class="${statusClass}"><code>${escapeHtml(actualName)}</code>${statusIcon}</td>
+                    <td><code>${expectedId}</code></td>
+                    <td class="col-domain">${item.domain}</td>
+                    <td class="col-text">${item.question_text}${item.note ? ' <span class="tag-reverse">' + item.note + '</span>' : ''}</td>
+                    <td class="col-preview">${item.preview_values.join("<br>")}</td>
+                </tr>`;
+            });
+
+            html += '</tbody></table>';
+            html += `<p class="hint" style="margin-top:12px">
+                共 <strong>${data.total_rows}</strong> 条记录，
+                预览前 <strong>${data.expected_cols}</strong> 列，
+                文件共有 <strong>${data.total_cols}</strong> 列
+            </p>`;
+            document.getElementById("mapping-container").innerHTML = html;
+        }
+
+        function escapeHtml(s) {
+            const div = document.createElement("div");
+            div.textContent = s;
+            return div.innerHTML;
+        }
+
+        // === 步骤切换 ===
+        function switchSection(id) {
+            document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
+            document.getElementById("section-" + id).classList.add("active");
+            document.getElementById("section-" + id).scrollIntoView({ behavior: "smooth" });
+        }
+
+        function updateStep(n) {
+            document.querySelectorAll(".step").forEach((s, i) => {
+                s.classList.remove("active", "done");
+                if (i + 1 < n) s.classList.add("done");
+                if (i + 1 === n) s.classList.add("active");
+            });
+        }
+
+        // === 按钮事件 ===
+        document.getElementById("btn-confirm-order").addEventListener("click", () => {
+            switchSection("calculate");
+            updateStep(3);
+        });
+
+        document.getElementById("btn-back-upload").addEventListener("click", () => {
+            switchSection("upload");
+            updateStep(1);
+        });
+
+        document.getElementById("btn-new-calc").addEventListener("click", () => {
+            location.reload();
+        });
+
+        // === 计算按钮 ===
+        document.getElementById("btn-calculate").addEventListener("click", async () => {
+            const code = document.getElementById("code-input").value.trim();
+            if (!code) {
+                document.getElementById("calc-error").textContent = "请输入激活码";
+                return;
+            }
+
+            const statusEl = document.getElementById("calc-status");
+            const errorEl = document.getElementById("calc-error");
+            const btn = document.getElementById("btn-calculate");
+
+            btn.disabled = true;
+            statusEl.innerHTML = '<div class="spinner"></div> 正在计算中…';
+            errorEl.textContent = "";
+
+            const formData = new FormData();
+            formData.append("file", uploadedFile);
+            formData.append("scale_type", currentScaleType);
+            formData.append("code", code);
+
+            try {
+                const resp = await fetch("/api/calculate", { method: "POST", body: formData });
+                const data = await resp.json();
+
+                if (data.error) {
+                    errorEl.textContent = data.error;
+                    statusEl.innerHTML = "";
+                    btn.disabled = false;
+                    return;
+                }
+
+                statusEl.innerHTML = '<span class="success">✅ 计算完成！共处理 ' + data.total_records + ' 条记录</span>';
+
+                // 渲染结果摘要
+                let summaryHtml = '<h3>结果摘要</h3><table class="summary-table"><thead><tr><th>指标</th><th>均值</th><th>标准差</th><th>最小值</th><th>最大值</th><th>有效数</th></tr></thead><tbody>';
+                for (const [key, val] of Object.entries(data.summary)) {
+                    summaryHtml += `<tr><td><strong>${key}</strong></td><td>${val.mean}</td><td>${val.std}</td><td>${val.min}</td><td>${val.max}</td><td>${val.count}</td></tr>`;
+                }
+                summaryHtml += '</tbody></table>';
+                document.getElementById("summary-container").innerHTML = summaryHtml;
+                document.getElementById("result-info").innerHTML = `<p>量表类型: <strong>${currentScaleType.toUpperCase()}</strong> | 记录数: <strong>${data.total_records}</strong></p>`;
+
+                downloadUrl = `/api/download/${data.download_token}`; document.getElementById("download-btn").href = downloadUrl;
+
+                switchSection("result");
+                updateStep(4);
+            } catch (e) {
+                errorEl.textContent = "网络错误，请重试";
+                statusEl.innerHTML = "";
+            }
+
+            btn.disabled = false;
+        });
+    </script>
+</body>
+</html>
