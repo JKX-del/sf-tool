@@ -1,4 +1,4 @@
-﻿"""
+"""
 SF-12 / SF-36 在线评分工具
 Flask Web 应用 - Vercel 兼容版
 """
@@ -55,6 +55,12 @@ def get_result(token: str):
 ACTIVATION_CODES = {
     hashlib.sha256("DEMO2026".encode()).hexdigest(): {"used": False, "max_uses": 1000},
     hashlib.sha256("TRIAL-SF".encode()).hexdigest(): {"used": False, "max_uses": 500},
+    # === 已售码（固化防止重启丢失）===
+    "cd89f8cfd5dcce2c5905a6fbb3e6c91d6d0100d790bb089be288bb46175ee6eb": {"used": False, "max_uses": 1},
+    "6999bb9b42373fe674a58727f7b14e8ccf4e4de1ea19393d70ac016c572f0d6a": {"used": False, "max_uses": 1},
+    "9a15b4d2a9ead82bb5fb38c3121e28c392327cb2c65e5e89586326f70b446641": {"used": False, "max_uses": 1},
+    "8e629549b83f6d9e241d8d14cddf99a410883faf528e5ab2f140c15cf4448579": {"used": False, "max_uses": 1},
+    "2101df647a833070d3faec6a0eb8d28286baf67ba12b77d73b9b15a6b3eef017": {"used": False, "max_uses": 1},
 }
 
 def generate_code(prefix="SF"):
